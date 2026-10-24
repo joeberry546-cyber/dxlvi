@@ -1,5 +1,6 @@
 // All of the API logic. Netlify and the local dev server both call this.
-import { DEFAULT_SETTINGS, isEmptyEntry, isValidDate, mergeFill, sanitizeEntry } from './model.mjs';
+import { randomUUID } from 'node:crypto';
+import { DEFAULT_SETTINGS, isEmptyEntry, isEmptyMeasurement, isValidDate, mergeFill, mergeMeasurementFill, migrateEntry, sanitizeEntry, sanitizeMeasurement, sanitizeMeds } from './model.mjs';
 import { deriveSecret, makeToken, safeEqual, verifyToken } from './auth.mjs';
 
 const json = (body, status = 200, extra = {}) =>
@@ -10,13 +11,14 @@ const json = (body, status = 200, extra = {}) =>
 const fail = (status, error) => json({ error }, status);
 
 const monthOf = (date) => date.slice(0, 7);
+const updateMonth = (kv, ym, mutate) => updateKey(kv, `entries/${ym}`, mutate);
 
-async function updateMonth(kv, ym, mutate) {
+async function updateKey(kv, key, mutate) {
   for (let attempt = 0; attempt < 20; attempt++) {
-    const cur = await kv.getJSON(`entries/${ym}`);
+    const cur = await kv.getJSON(key);
     const data = cur ? structuredClone(cur.data) : {};
     const result = mutate(data);
-    if (await kv.putJSON(`entries/${ym}`, data, cur ? cur.etag : null)) return result;
+    if (await kv.putJSON(key, data, cur ? cur.etag : null)) return result;
     // Someone else saved this month first. Wait a moment, then read it again.
     await new Promise((r) => setTimeout(r, 5 + Math.random() * 40));
   }
@@ -28,10 +30,10 @@ async function loadAll(kv) {
   const entries = {};
   for (let i = 0; i < keys.length; i += 16) {
     const chunk = await Promise.all(keys.slice(i, i + 16).map((k) => kv.getJSON(k)));
-    for (const c of chunk) if (c) Object.assign(entries, c.data);
+    for (const c of chunk) if (c) for (const [d, e] of Object.entries(c.data)) entries[d] = migrateEntry(e);
   }
-  const s = await kv.getJSON('settings');
-  return { entries, settings: { ...DEFAULT_SETTINGS, ...(s ? s.data : {}) } };
+  const [s, m, md] = await Promise.all([kv.getJSON('settings'), kv.getJSON('measurements'), kv.getJSON('meds')]);
+  return { entries, settings: { ...DEFAULT_SETTINGS, ...(s ? s.data : {}) }, measurements: m ? m.data : {}, meds: md && Array.isArray(md.data.items) ? md.data.items : [] };
 }
 
 function sanitizeSettings(raw, current) {
@@ -123,6 +125,33 @@ export function createHandler({ kv, env = process.env, now = () => Date.now() })
         }
       }
 
+      const mm = route.match(/^measurements\/(\d{4}-\d{2}-\d{2})$/);
+      if (mm) {
+        const date = mm[1];
+        if (!isValidDate(date)) return fail(400, 'That date is not valid.');
+        if (method === 'PUT') {
+          let body;
+          try { body = await req.json(); } catch { return fail(400, 'Send the measurements as JSON.'); }
+          const clean = sanitizeMeasurement(body);
+          const empty = isEmptyMeasurement(clean);
+          if (!empty) clean.updatedAt = new Date(now()).toISOString();
+          await updateKey(kv, 'measurements', (data) => { if (empty) delete data[date]; else data[date] = clean; });
+          return json({ date, session: empty ? null : clean });
+        }
+        if (method === 'DELETE') {
+          await updateKey(kv, 'measurements', (data) => { delete data[date]; });
+          return json({ date, session: null });
+        }
+      }
+
+      if (route === 'meds' && method === 'PUT') {
+        let body;
+        try { body = await req.json(); } catch { return fail(400, 'Send the list as JSON.'); }
+        const items = sanitizeMeds(body?.items, () => randomUUID().replace(/-/g, '').slice(0, 16));
+        await kv.putJSONForce('meds', { items });
+        return json({ items });
+      }
+
       if (route === 'settings' && method === 'PUT') {
         let body;
         try { body = await req.json(); } catch { return fail(400, 'Send settings as JSON.'); }
@@ -155,6 +184,21 @@ export function createHandler({ kv, env = process.env, now = () => Date.now() })
             }
           });
         }
+        const sessions = { created: 0, merged: 0, unchanged: 0 };
+        const mList = Array.isArray(body?.measurements) ? body.measurements.slice(0, 500) : [];
+        if (mList.length) {
+          await updateKey(kv, 'measurements', (data) => {
+            for (const raw of mList) {
+              if (!isValidDate(raw?.date)) continue;
+              const clean = sanitizeMeasurement(raw);
+              if (isEmptyMeasurement(clean)) continue;
+              if (!data[raw.date]) { data[raw.date] = { ...clean, updatedAt: new Date(now()).toISOString() }; sessions.created++; continue; }
+              const { entry, changed } = mergeMeasurementFill(data[raw.date], clean);
+              if (changed) { data[raw.date] = { ...entry, updatedAt: new Date(now()).toISOString() }; sessions.merged++; } else sessions.unchanged++;
+            }
+          });
+        }
+        if (mList.length) tally.sessions = sessions;
         if (body?.start) {
           const cur = await kv.getJSON('settings');
           const merged = { ...DEFAULT_SETTINGS, ...(cur ? cur.data : {}) };

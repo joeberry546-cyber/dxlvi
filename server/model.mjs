@@ -1,4 +1,5 @@
 // Data rules for DXLVI: what an entry looks like, how it is cleaned, and how imports merge.
+import { MEASURE_KEYS } from '../public/js/fields.js';
 
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -29,13 +30,30 @@ const num = (v, min, max) => {
   return Math.round(n * 100) / 100;
 };
 
-const MIN_SECTIONS = ['cardio', 'stretch', 'balance', 'meditationAm', 'meditationPm'];
+const MIN_SECTIONS = ['cardio', 'flex', 'meditationAm', 'meditationPm'];
+
+// Stretching and balance used to be two sections. They are now one ("flex").
+// Old entries are folded together whenever they are read or written.
+export function migrateEntry(raw) {
+  if (!raw || typeof raw !== 'object' || (raw.stretch === undefined && raw.balance === undefined)) return raw;
+  const e = { ...raw };
+  const a = e.stretch, b = e.balance;
+  delete e.stretch;
+  delete e.balance;
+  if (!e.flex) {
+    const min = (Number(a?.min) || 0) + (Number(b?.min) || 0);
+    const note = [a?.note, b?.note].filter((x) => typeof x === 'string' && x.trim()).join(' · ');
+    if (min > 0 || note) e.flex = { ...(min > 0 ? { min } : {}), ...(note ? { note } : {}) };
+  }
+  return e;
+}
 
 // Returns only meaningful, valid fields. Anything empty is dropped, so an
 // entry with nothing in it comes back as {}.
-export function sanitizeEntry(raw) {
+export function sanitizeEntry(input) {
   const e = {};
-  if (!raw || typeof raw !== 'object') return e;
+  if (!input || typeof input !== 'object') return e;
+  const raw = migrateEntry(input);
 
   const weight = num(raw.weight, 50, 1500);
   if (weight !== null) {
@@ -110,4 +128,56 @@ export function mergeFill(existing, incoming) {
     if (out[k] === undefined) { out[k] = v; changed = true; }
   }
   return { entry: out, changed };
+}
+
+
+/* ---------- body measurements (one session per date, inches) ---------- */
+export function sanitizeMeasurement(raw) {
+  const m = {};
+  if (!raw || typeof raw !== 'object') return m;
+  for (const k of MEASURE_KEYS) {
+    const v = num(raw[k], 1, 150);
+    if (v !== null) m[k] = v;
+  }
+  const note = str(raw.note, 1000);
+  if (note) m.note = note;
+  return m;
+}
+export const isEmptyMeasurement = (m) => Object.keys(m).filter((k) => k !== 'updatedAt').length === 0;
+
+export function mergeMeasurementFill(existing, incoming) {
+  const out = { ...existing };
+  let changed = false;
+  for (const [k, v] of Object.entries(incoming)) {
+    if (k === 'updatedAt') continue;
+    if (k === 'note') {
+      if (!out.note) { out.note = v; changed = true; }
+      else if (!out.note.includes(v)) { out.note = `${out.note}\n${v}`.slice(0, 1000); changed = true; }
+    } else if (out[k] === undefined) { out[k] = v; changed = true; }
+  }
+  return { entry: out, changed };
+}
+
+/* ---------- medications and supplements ---------- */
+const ID_RE = /^[A-Za-z0-9_-]{6,64}$/;
+export function sanitizeMeds(list, makeId) {
+  const out = [];
+  const seen = new Set();
+  for (const raw of Array.isArray(list) ? list.slice(0, 300) : []) {
+    if (!raw || typeof raw !== 'object') continue;
+    const name = str(raw.name, 120);
+    if (!name) continue;
+    let id = typeof raw.id === 'string' && ID_RE.test(raw.id) ? raw.id : makeId();
+    while (seen.has(id)) id = makeId();
+    seen.add(id);
+    const item = { id, name };
+    for (const [k, max] of [['dose', 120], ['schedule', 200], ['note', 1000]]) {
+      const v = str(raw[k], max);
+      if (v) item[k] = v;
+    }
+    if (isValidDate(raw.start)) item.start = raw.start;
+    if (isValidDate(raw.end)) item.end = raw.end;
+    out.push(item);
+  }
+  return out;
 }

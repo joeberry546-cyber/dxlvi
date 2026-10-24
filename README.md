@@ -1,9 +1,9 @@
 # DXLVI
 
-A private tracker for weight, daily habits, and (soon) body measurements. DXLVI is 546 in Roman numerals, the weight of the first weigh-in on Aug 13, 2012.
+A private tracker for weight, daily habits, body measurements, and medications. DXLVI is 546 in Roman numerals, the weight of the first weigh-in on Aug 13, 2012.
 
-This is **phase 1**: sign-in gate, daily log (weight, water, strength, cardio, stretching, balance, meditation, food, alcohol, steps, notes) with editing and backfill, history, a weight chart, settings, history import, and export.
-Coming next: monthly measurements with the in/cm toggle and reminder banner (phase 2), then medications, streaks and highlights (phase 3).
+DXLVI now covers all three phases: a sign-in gate; a daily log (weight, water with 8/16/24/40 oz buttons, strength, cardio, flexibility and balance, meditation with a timer, food, alcohol, steps, notes) with editing and backfill; a Measure page (17 monthly measurements, inch/cm toggle, reminder banner, comparisons, belly-to-height ratio); a Meds page (add, change, stop, remove); history as a calendar or list; Trends (highlights, streaks, weight chart, BMI, measurement lines); optional goals; history import; and export.
+
 
 ## How it fits together
 
@@ -21,7 +21,7 @@ Coming next: monthly measurements with the in/cm toggle and reminder banner (pha
    - `SESSION_SECRET` (optional): a long random string. If you leave it out, one is derived from your passcode.
    Make sure the variables are available to **Functions**.
 4. Deploy, open the site, and sign in.
-5. Go to **Settings, Bring in old history** and choose `dxlvi-historical-weights.csv` and `dxlvi-historical-extras.csv` from your `Seed data` folder. It only fills gaps, so running it twice is safe.
+5. Go to **Settings, Bring in old history** and choose the CSV files from your `Seed data` folder: `dxlvi-historical-weights.csv`, `dxlvi-historical-extras.csv`, `dxlvi-historical-steps.csv` and `dxlvi-historical-measurements.csv`. You can pick all four at once. It only fills gaps, so running it twice is safe.
 6. On your phone, use the browser's **Add to Home Screen** to get the DXLVI icon.
 
 To sign every device out, change `SESSION_SECRET` (or `APP_PASSCODE`, if you never set a secret) and redeploy.

@@ -111,3 +111,40 @@ test('export returns everything', async () => {
   assert.equal(r.body.app, 'DXLVI');
   assert.equal(r.body.entries['2026-10-23'].weight, 424);
 });
+
+test('stretching and balance fold into one flex section', async () => {
+  const { call, token } = await setup();
+  const r = await call('PUT', '/api/entries/2026-10-20', { stretch: { min: 10, note: 'hamstrings' }, balance: { min: 5, note: 'one leg' } }, token);
+  assert.deepEqual(r.body.entry.flex, { min: 15, note: 'hamstrings · one leg' });
+  assert.equal(r.body.entry.stretch, undefined);
+  assert.equal(r.body.entry.balance, undefined);
+});
+
+test('measurements save, clean, merge on import, and delete', async () => {
+  const { call, token } = await setup();
+  let r = await call('PUT', '/api/measurements/2026-09-04', { belly: 65.5, neck: 'x', armLooseL: 17, bogus: 9, note: ' first ' }, token);
+  assert.deepEqual({ belly: r.body.session.belly, armLooseL: r.body.session.armLooseL, note: r.body.session.note, neck: r.body.session.neck, bogus: r.body.session.bogus }, { belly: 65.5, armLooseL: 17, note: 'first', neck: undefined, bogus: undefined });
+  r = await call('POST', '/api/import', { measurements: [{ date: '2026-09-04', belly: 70, waist: 60 }, { date: '2026-10-01', belly: 64 }, { date: 'nope', belly: 1 }] }, token);
+  assert.deepEqual(r.body.sessions, { created: 1, merged: 1, unchanged: 0 });
+  const data = (await call('GET', '/api/data', undefined, token)).body;
+  assert.equal(data.measurements['2026-09-04'].belly, 65.5, 'existing value kept');
+  assert.equal(data.measurements['2026-09-04'].waist, 60, 'gap filled');
+  assert.equal(data.measurements['2026-10-01'].belly, 64);
+  await call('DELETE', '/api/measurements/2026-10-01', undefined, token);
+  assert.equal((await call('GET', '/api/data', undefined, token)).body.measurements['2026-10-01'], undefined);
+  assert.equal((await call('PUT', '/api/measurements/2026-02-31', { belly: 1 }, token)).status, 400);
+});
+
+test('medications can be added, changed, ended and removed', async () => {
+  const { call, token } = await setup();
+  let r = await call('PUT', '/api/meds', { items: [{ name: 'Vitamin D', dose: '2000 IU', start: '2026-01-01' }, { name: '' }, { name: 'Fish oil', end: '2026-05-05' }] }, token);
+  assert.equal(r.body.items.length, 2);
+  assert.ok(r.body.items[0].id);
+  const items = r.body.items.map((m) => (m.name === 'Vitamin D' ? { ...m, end: '2026-10-01' } : m));
+  await call('PUT', '/api/meds', { items }, token);
+  let data = (await call('GET', '/api/data', undefined, token)).body;
+  assert.equal(data.meds.find((m) => m.name === 'Vitamin D').end, '2026-10-01');
+  await call('PUT', '/api/meds', { items: [] }, token);
+  data = (await call('GET', '/api/data', undefined, token)).body;
+  assert.deepEqual(data.meds, []);
+});

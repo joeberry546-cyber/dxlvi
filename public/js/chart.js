@@ -62,6 +62,8 @@ export function drawWeightChart(host, o) {
   let lo = Math.min(...vals), hi = Math.max(...vals);
   const refIn = o.showRef && o.refWeight && o.refWeight >= lo - 40 && o.refWeight <= hi + 40;
   if (refIn) { lo = Math.min(lo, o.refWeight); hi = Math.max(hi, o.refWeight); }
+  const goalIn = Boolean(o.goalWeight);
+  if (goalIn) { lo = Math.min(lo, o.goalWeight); hi = Math.max(hi, o.goalWeight); }
   const step = niceStep(hi - lo);
   const y0 = Math.floor((lo - 2) / step) * step, y1 = Math.ceil((hi + 2) / step) * step;
   const X = (t) => m.l + ((t - t0) / (t1 - t0 || 1)) * (width - m.l - m.r);
@@ -90,6 +92,11 @@ export function drawWeightChart(host, o) {
   if (refIn) {
     svg.append(s('line', { class: 'ref', x1: m.l, x2: width - m.r, y1: Y(o.refWeight), y2: Y(o.refWeight) }));
     svg.append(s('text', { class: 'reflabel', x: width - m.r - 4, y: Y(o.refWeight) - 6, 'text-anchor': 'end' }, o.refLabel));
+  }
+
+  if (goalIn) {
+    svg.append(s('line', { class: 'goal', x1: m.l, x2: width - m.r, y1: Y(o.goalWeight), y2: Y(o.goalWeight) }));
+    svg.append(s('text', { class: 'goallabel', x: m.l + 6, y: Y(o.goalWeight) - 6 }, `Goal ${fmt1(o.goalWeight)}`));
   }
 
   for (const p of pts) svg.append(s('circle', { class: p.flag ? 'raw review' : 'raw', cx: X(p.t), cy: Y(p.v), r: pts.length > 250 ? 2.3 : 3.2 }));
@@ -131,5 +138,62 @@ export function drawWeightChart(host, o) {
   svg.addEventListener('pointermove', show);
   svg.addEventListener('pointerdown', show);
   svg.addEventListener('pointerleave', hide);
+  host.append(svg, tip);
+}
+
+// A simple trend line for monthly measurements. points: [{ d, t, v }], v already in the display unit.
+export function drawLineChart(host, o) {
+  host.replaceChildren();
+  const pts = o.points;
+  if (!pts.length) { host.append(h('p', { class: 'empty' }, 'Nothing logged yet.')); return; }
+  const width = Math.max(280, Math.floor(host.clientWidth || 600));
+  const height = 210;
+  const m = { l: 44, r: 16, t: 14, b: 28 };
+  const vals = pts.map((p) => p.v);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  const goalIn = Boolean(o.goal);
+  if (goalIn) { lo = Math.min(lo, o.goal); hi = Math.max(hi, o.goal); }
+  const pad = Math.max((hi - lo) * 0.15, 0.5);
+  lo -= pad; hi += pad;
+  const rawStep = (hi - lo) / 4;
+  const mag = 10 ** Math.floor(Math.log10(rawStep));
+  const step = [1, 2, 2.5, 5, 10].map((k) => k * mag).find((v) => v >= rawStep) || rawStep;
+  const y0 = Math.floor(lo / step) * step, y1 = Math.ceil(hi / step) * step;
+  let t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  if (t1 - t0 < 60) { t0 -= 30; t1 += 30; }
+  const X = (t) => m.l + ((t - t0) / (t1 - t0)) * (width - m.l - m.r);
+  const Y = (v) => height - m.b - ((v - y0) / (y1 - y0)) * (height - m.t - m.b);
+  const svg = s('svg', { class: 'chart', viewBox: `0 0 ${width} ${height}`, width, height, role: 'img', 'aria-label': o.label });
+  for (let v = y0; v <= y1 + step / 2; v += step) {
+    svg.append(s('line', { class: 'grid', x1: m.l, x2: width - m.r, y1: Y(v), y2: Y(v) }));
+    svg.append(s('text', { x: m.l - 8, y: Y(v) + 4, 'text-anchor': 'end' }, Math.round(v * 100) / 100));
+  }
+  for (const tk of xTicks(t0, t1)) {
+    if (tk.t < t0 || tk.t > t1) continue;
+    svg.append(s('text', { x: X(tk.t), y: height - 8, 'text-anchor': 'middle' }, tk.label));
+  }
+  if (goalIn) {
+    svg.append(s('line', { class: 'goal', x1: m.l, x2: width - m.r, y1: Y(o.goal), y2: Y(o.goal) }));
+    svg.append(s('text', { class: 'goallabel', x: m.l + 6, y: Y(o.goal) - 6 }, `Goal ${fmt1(o.goal)}`));
+  }
+  if (pts.length > 1) svg.append(s('path', { class: 'avg', d: pts.map((p, i) => `${i ? 'L' : 'M'}${X(p.t).toFixed(1)} ${Y(p.v).toFixed(1)}`).join('') }));
+  const dots = pts.map((p) => s('circle', { class: 'pt', cx: X(p.t), cy: Y(p.v), r: 4.5 }));
+  svg.append(...dots);
+  const tip = h('div', { class: 'tip', hidden: true });
+  const show = (ev) => {
+    const r = svg.getBoundingClientRect();
+    const x = ((ev.clientX - r.left) / r.width) * width;
+    let best = 0;
+    pts.forEach((p, i) => { if (Math.abs(X(p.t) - x) < Math.abs(X(pts[best].t) - x)) best = i; });
+    const p = pts[best];
+    dots.forEach((d, i) => d.classList.toggle('on', i === best));
+    tip.hidden = false;
+    tip.replaceChildren(h('strong', null, `${fmt1(p.v)} ${o.unit}`), h('br'), mediumDate(p.d));
+    tip.style.left = `${Math.min(Math.max((X(p.t) / width) * r.width, 60), r.width - 60)}px`;
+    tip.style.top = `${(Y(p.v) / height) * r.height}px`;
+  };
+  svg.addEventListener('pointermove', show);
+  svg.addEventListener('pointerdown', show);
+  svg.addEventListener('pointerleave', () => { tip.hidden = true; dots.forEach((d) => d.classList.remove('on')); });
   host.append(svg, tip);
 }
