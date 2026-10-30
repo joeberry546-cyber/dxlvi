@@ -28,3 +28,7 @@ export function measureLabel(key) {
 }
 
 export const BELLY_KEY = 'belly'; // used for the belly-to-height ratio
+
+// Medication categories and how often something is taken. Used by the Meds page and the server.
+export const MED_CATEGORIES = ['Prescription', 'Over the counter', 'Supplement', 'Herbal', 'Topical', 'Other'];
+export const MED_FREQUENCIES = ['Daily', 'Twice daily', 'Every other day', 'Weekly', 'Monthly', 'As needed', 'Other'];

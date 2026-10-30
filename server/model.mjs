@@ -1,5 +1,5 @@
 // Data rules for DXLVI: what an entry looks like, how it is cleaned, and how imports merge.
-import { MEASURE_KEYS } from '../public/js/fields.js';
+import { MEASURE_KEYS, MED_CATEGORIES, MED_FREQUENCIES } from '../public/js/fields.js';
 
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -175,6 +175,8 @@ export function sanitizeMeds(list, makeId) {
       const v = str(raw[k], max);
       if (v) item[k] = v;
     }
+    if (MED_CATEGORIES.includes(raw.category)) item.category = raw.category;
+    if (MED_FREQUENCIES.includes(raw.frequency)) item.frequency = raw.frequency;
     if (isValidDate(raw.start)) item.start = raw.start;
     if (isValidDate(raw.end)) item.end = raw.end;
     out.push(item);

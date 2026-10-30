@@ -35,6 +35,50 @@
   color-scheme: dark;
 }
 
+/* Blush: soft rose and plum on light paper. Chosen in Settings, Look. */
+:root[data-theme="blush"] {
+  --bg: #f7eef1; --surface: #fdf9fa; --surface-2: #f1e3e8; --ink: #3c2832; --muted: #7f6470; --line: #e4cfd7;
+  --primary: #8c4a66; --on-primary: #fff8fb; --accent: #b9788f; --data: #7b5196; --raw: #bfa3b3;
+  --band: rgba(140, 74, 102, 0.10); --shadow: 0 1px 2px rgba(60, 40, 50, 0.06), 0 6px 18px rgba(60, 40, 50, 0.07);
+  color-scheme: light;
+}
+/* Forest: deep evergreen and moss, with candlelit amber accents. */
+:root[data-theme="forest"] {
+  --bg: #0c1812; --surface: #132219; --surface-2: #1a2e22; --ink: #dde8da; --muted: #93a896; --line: #27402f;
+  --primary: #8fbb86; --on-primary: #0b180e; --accent: #d7a460; --data: #9fc89a; --raw: #58715f;
+  --band: rgba(143, 187, 134, 0.10); --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 22px rgba(0, 0, 0, 0.3);
+  color-scheme: dark;
+}
+
+/* Sage and linen: muted eucalyptus on soft paper. Light. */
+:root[data-theme="sage"] {
+  --bg: #eef1ea; --surface: #f8faf5; --surface-2: #e2e8dc; --ink: #2a3328; --muted: #5e6b5a; --line: #cdd6c5;
+  --primary: #5f7a5a; --on-primary: #f6f9f3; --accent: #a0734f; --data: #4d6a7a; --raw: #98a592;
+  --band: rgba(95, 122, 90, 0.10); --shadow: 0 1px 2px rgba(42, 51, 40, 0.06), 0 6px 18px rgba(42, 51, 40, 0.06);
+  color-scheme: light;
+}
+/* Slate and ocean: cool blue-grey with sea-glass teal. Dark. */
+:root[data-theme="slate"] {
+  --bg: #0d1620; --surface: #142230; --surface-2: #1b2c3e; --ink: #dce7f2; --muted: #8fa3b8; --line: #243a4f;
+  --primary: #6fb3c9; --on-primary: #0a1820; --accent: #e6b87a; --data: #8ccde0; --raw: #55708a;
+  --band: rgba(111, 179, 201, 0.10); --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 22px rgba(0, 0, 0, 0.25);
+  color-scheme: dark;
+}
+/* Terracotta sunset: warm clay and cream. Light. */
+:root[data-theme="terracotta"] {
+  --bg: #f5ebe3; --surface: #fcf6f1; --surface-2: #efdfd3; --ink: #3b2a22; --muted: #7d6358; --line: #e2cdbf;
+  --primary: #b45a3c; --on-primary: #fff8f4; --accent: #7d8f5a; --data: #6b5b95; --raw: #c4a898;
+  --band: rgba(180, 90, 60, 0.10); --shadow: 0 1px 2px rgba(59, 42, 34, 0.06), 0 6px 18px rgba(59, 42, 34, 0.07);
+  color-scheme: light;
+}
+/* Midnight plum: deep violet with lilac and rose. Dark. */
+:root[data-theme="plum"] {
+  --bg: #140d1c; --surface: #1f1529; --surface-2: #2a1d37; --ink: #ece3f2; --muted: #a596b5; --line: #3a2a4a;
+  --primary: #c79bd9; --on-primary: #1c1024; --accent: #e8a0b4; --data: #b9a2e6; --raw: #6e5a82;
+  --band: rgba(199, 155, 217, 0.10); --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 22px rgba(0, 0, 0, 0.3);
+  color-scheme: dark;
+}
+
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 body {
@@ -240,3 +284,10 @@ button.day.sess { width: 100%; background: transparent; border: 0; border-top: 1
 .legend i.m-m.lg { margin-left: 2px; }
 
 @media (max-width: 400px) { .nav a { font-size: 0.62rem; } .nav svg { width: 20px; height: 20px; } }
+
+/* medications: compact rows that open into details */
+button.medrow { display: grid; gap: 4px; width: 100%; text-align: left; background: transparent; border: 0; border-top: 1px solid var(--line); padding: 12px 4px; cursor: pointer; border-radius: 0; color: inherit; }
+button.medrow:first-of-type { border-top: 0; }
+button.medrow:hover { background: var(--surface-2); }
+button.medrow.past { opacity: 0.8; }
+.sortsel { width: auto; min-width: 160px; min-height: 40px; padding: 6px 12px; }

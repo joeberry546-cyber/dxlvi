@@ -95,7 +95,7 @@ export function viewSettings() {
     h('div', { class: 'row' }, GOAL_KEYS.map((k) => goalIn(k, measureLabel(k), 'in', `goal-${k}`))));
 
   const theme = h('select', { id: 'theme', onchange: (ev) => { const v = ev.target.value; if (v === 'system') { LS.del('dxlvi.theme'); delete document.documentElement.dataset.theme; } else { LS.set('dxlvi.theme', v); document.documentElement.dataset.theme = v; } } },
-    ['system', 'light', 'dark'].map((v) => h('option', { value: v, selected: (LS.get('dxlvi.theme') || 'system') === v ? true : null }, v === 'system' ? 'Match my device' : v === 'light' ? 'Light (earthy)' : 'Dark (night log)')));
+    ['system', 'light', 'dark', 'blush', 'forest', 'sage', 'slate', 'terracotta', 'plum'].map((v) => h('option', { value: v, selected: (LS.get('dxlvi.theme') || 'system') === v ? true : null }, ({ system: 'Match my device', light: 'Light (earthy)', dark: 'Dark (night log)', blush: 'Blush (elegant)', forest: 'Forest (moody)', sage: 'Sage and linen', slate: 'Slate and ocean', terracotta: 'Terracotta sunset', plum: 'Midnight plum' })[v])));
   const result = h('div', { class: 'grid', style: 'display:grid;gap:6px' });
   const fileIn = h('input', { id: 'import-files', type: 'file', accept: '.csv,text/csv', multiple: true, 'aria-label': 'Choose history files' });
   const importBtn = h('button', { class: 'btn', type: 'button', onclick: async () => {
