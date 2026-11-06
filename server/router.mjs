@@ -1,6 +1,6 @@
 // All of the API logic. Netlify and the local dev server both call this.
 import { randomUUID } from 'node:crypto';
-import { DEFAULT_SETTINGS, isEmptyEntry, isEmptyMeasurement, isValidDate, mergeFill, mergeMeasurementFill, migrateEntry, sanitizeEntry, sanitizeMeasurement, sanitizeMeds } from './model.mjs';
+import { DEFAULT_SETTINGS, isEmptyEntry, isEmptyMeasurement, isValidDate, mergeFill, mergeMeasurementFill, migrateEntry, sanitizeEntry, sanitizeMeasurement, sanitizeMeds, sanitizeSupplies, defaultSupplies } from './model.mjs';
 import { deriveSecret, makeToken, safeEqual, verifyToken } from './auth.mjs';
 
 const json = (body, status = 200, extra = {}) =>
@@ -32,8 +32,8 @@ async function loadAll(kv) {
     const chunk = await Promise.all(keys.slice(i, i + 16).map((k) => kv.getJSON(k)));
     for (const c of chunk) if (c) for (const [d, e] of Object.entries(c.data)) entries[d] = migrateEntry(e);
   }
-  const [s, m, md] = await Promise.all([kv.getJSON('settings'), kv.getJSON('measurements'), kv.getJSON('meds')]);
-  return { entries, settings: { ...DEFAULT_SETTINGS, ...(s ? s.data : {}) }, measurements: m ? m.data : {}, meds: md && Array.isArray(md.data.items) ? md.data.items : [] };
+  const [s, m, md, sp] = await Promise.all([kv.getJSON('settings'), kv.getJSON('measurements'), kv.getJSON('meds'), kv.getJSON('supplies')]);
+  return { entries, settings: { ...DEFAULT_SETTINGS, ...(s ? s.data : {}) }, measurements: m ? m.data : {}, meds: md && Array.isArray(md.data.items) ? md.data.items : [], supplies: sp ? sp.data : defaultSupplies() };
 }
 
 function sanitizeSettings(raw, current) {
@@ -150,6 +150,14 @@ export function createHandler({ kv, env = process.env, now = () => Date.now() })
         const items = sanitizeMeds(body?.items, () => randomUUID().replace(/-/g, '').slice(0, 16));
         await kv.putJSONForce('meds', { items });
         return json({ items });
+      }
+
+      if (route === 'supplies' && method === 'PUT') {
+        let body;
+        try { body = await req.json(); } catch { return fail(400, 'Send the supplies as JSON.'); }
+        const data = sanitizeSupplies(body, () => randomUUID().replace(/-/g, '').slice(0, 16));
+        await kv.putJSONForce('supplies', data);
+        return json(data);
       }
 
       if (route === 'settings' && method === 'PUT') {

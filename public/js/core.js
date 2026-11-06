@@ -1,5 +1,6 @@
 // Shared plumbing: state, talking to the server, autosave, and the page frame.
 import { h, s, todayStr, utcDay } from './util.js';
+import { dueCount } from './fields.js';
 
 export const LS = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
@@ -12,6 +13,7 @@ export const state = {
   entries: {},
   measurements: {},
   meds: [],
+  supplies: { vendor: {}, cpap: {}, glasses: {}, stockings: [] },
   settings: { heightIn: 74.5, birthday: null, start: null, units: 'in', waterTargetOz: null, goals: {} },
 };
 export const app = document.getElementById('app');
@@ -39,6 +41,7 @@ export async function loadData() {
   state.entries = d.entries;
   state.measurements = d.measurements || {};
   state.meds = d.meds || [];
+  state.supplies = d.supplies || state.supplies;
   state.settings = { ...state.settings, ...d.settings };
 }
 
@@ -114,6 +117,12 @@ export async function saveMeds(items) {
   catch (err) { setStatus('error', err.message); return false; }
 }
 
+export async function saveSupplies(next) {
+  setStatus('saving');
+  try { state.supplies = await api('supplies', { method: 'PUT', body: next }); setStatus('saved'); return true; }
+  catch (err) { setStatus('error', err.message); return false; }
+}
+
 /* ---------- entries ---------- */
 export const entryFor = (date) => (state.entries[date] ||= {});
 export const hasText = (v) => typeof v === 'string' && v.trim() !== '';
@@ -154,15 +163,16 @@ const icons = {
   history: 'M4 6h16M4 12h16M4 18h10',
   measure: 'M3 8h18v8H3zM7 8v4M11 8v3M15 8v4M19 8v3',
   meds: 'M8.5 3.5l12 12a4.2 4.2 0 0 1-6 6l-12-12a4.2 4.2 0 0 1 6-6zM8 9l7 7',
+  supplies: 'M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10',
   trends: 'M3 17l6-6 4 4 8-9',
   settings: 'M4 7h9M17 7h3M4 17h3M11 17h9M15 7m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M9 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
 };
 export function nav(active) {
   const link = (key, label, href) =>
-    h('a', { href, 'aria-current': active === key ? 'page' : null }, s('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' }, s('path', { d: icons[key] })), label);
+    h('a', { href, 'aria-current': active === key ? 'page' : null }, key === 'supplies' && dueCount(state.supplies.cpap, todayStr()) ? h('span', { class: 'navdot', role: 'img', 'aria-label': 'Something is due' }) : null, s('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' }, s('path', { d: icons[key] })), label);
   return h('nav', { class: 'nav', 'aria-label': 'Main' },
     link('log', 'Log', `#/log/${todayStr()}`), link('history', 'History', '#/history'), link('measure', 'Measure', '#/measure'),
-    link('meds', 'Meds', '#/meds'), link('trends', 'Trends', '#/trends'), link('settings', 'Settings', '#/settings'));
+    link('meds', 'Meds', '#/meds'), link('supplies', 'Supplies', '#/supplies'), link('trends', 'Trends', '#/trends'), link('settings', 'Settings', '#/settings'));
 }
 export function shell(active, ...content) {
   statusEl = h('div', { class: 'status', role: 'status', 'aria-live': 'polite' });

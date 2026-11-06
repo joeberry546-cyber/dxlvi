@@ -3,6 +3,7 @@ import { LS, state, app, api, loadData, setSignOutHandler, signOut, flush, markD
 import { STREAKS, streak, calendarCard } from './js/insights.js';
 import { dueBanner, viewMeasure } from './js/measure.js';
 import { viewMeds } from './js/meds.js';
+import { viewSupplies } from './js/supplies.js';
 import { viewTrends, stopObserving } from './js/trends.js';
 import { viewSettings } from './js/settings.js';
 
@@ -251,6 +252,7 @@ function render() {
   else if (view === 'trends') viewTrends();
   else if (view === 'measure') viewMeasure(arg);
   else if (view === 'meds') viewMeds();
+  else if (view === 'supplies') viewSupplies();
   else if (view === 'settings') viewSettings();
   else viewLog(arg);
 }

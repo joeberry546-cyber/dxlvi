@@ -1,5 +1,5 @@
 // Data rules for DXLVI: what an entry looks like, how it is cleaned, and how imports merge.
-import { MEASURE_KEYS, MED_CATEGORIES, MED_FREQUENCIES } from '../public/js/fields.js';
+import { MEASURE_KEYS, MED_CATEGORIES, MED_FREQUENCIES, CPAP_PARTS, EYE_COLS, EYES, eyeKey, GLASSES_EXTRA } from '../public/js/fields.js';
 
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -180,6 +180,56 @@ export function sanitizeMeds(list, makeId) {
     if (isValidDate(raw.start)) item.start = raw.start;
     if (isValidDate(raw.end)) item.end = raw.end;
     out.push(item);
+  }
+  return out;
+}
+
+/* ---------- supplies: CPAP schedule, glasses prescription, compression stockings ---------- */
+// What a brand-new account starts with: each CPAP part marked as changed on 2026-11-01.
+export function defaultSupplies() {
+  return {
+    vendor: { name: 'Intermountain Homecare Equipment', phone: '(801) 507-9100' },
+    cpap: Object.fromEntries(CPAP_PARTS.map((p) => [p.key, ['2026-11-01']])),
+    glasses: {},
+    stockings: [],
+  };
+}
+export function sanitizeSupplies(raw, makeId) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const out = { vendor: {}, cpap: {}, glasses: {}, stockings: [] };
+  const vName = str(r.vendor?.name, 120), vPhone = str(r.vendor?.phone, 40);
+  if (vName) out.vendor.name = vName;
+  if (vPhone) out.vendor.phone = vPhone;
+  for (const p of CPAP_PARTS) {
+    const dates = Array.isArray(r.cpap?.[p.key]) ? r.cpap[p.key].filter(isValidDate) : [];
+    out.cpap[p.key] = [...new Set(dates)].sort().reverse().slice(0, 60);
+  }
+  const g = r.glasses && typeof r.glasses === 'object' ? r.glasses : {};
+  for (const [eye] of EYES) for (const col of EYE_COLS) {
+    const k = eyeKey(eye, col[0]);
+    const v = str(g[k], 20);
+    if (v) out.glasses[k] = v;
+  }
+  for (const k of GLASSES_EXTRA) {
+    const v = str(g[k], k === 'prescriber' ? 120 : 20);
+    if (v) out.glasses[k] = v;
+  }
+  for (const k of ['examDate', 'expires']) if (isValidDate(g[k])) out.glasses[k] = g[k];
+  const gNote = str(g.note, 1000);
+  if (gNote) out.glasses.note = gNote;
+  const seen = new Set();
+  for (const s of Array.isArray(r.stockings) ? r.stockings.slice(0, 50) : []) {
+    if (!s || typeof s !== 'object') continue;
+    const item = {};
+    for (const [k, max] of [['brand', 120], ['strength', 60], ['size', 60], ['style', 120], ['note', 1000]]) {
+      const v = str(s[k], max);
+      if (v) item[k] = v;
+    }
+    if (!Object.keys(item).length) continue;
+    let id = typeof s.id === 'string' && ID_RE.test(s.id) ? s.id : makeId();
+    while (seen.has(id)) id = makeId();
+    seen.add(id);
+    out.stockings.push({ id, ...item });
   }
   return out;
 }
