@@ -148,3 +148,62 @@ test('medications can be added, changed, ended and removed', async () => {
   data = (await call('GET', '/api/data', undefined, token)).body;
   assert.deepEqual(data.meds, []);
 });
+
+test('supplies start seeded, save, and are cleaned', async () => {
+  const { call, token } = await setup();
+  let data = (await call('GET', '/api/data', undefined, token)).body;
+  assert.deepEqual(data.supplies.cpap.cushion, ['2026-11-01']);
+  assert.equal(data.supplies.vendor.phone, '(801) 507-9100');
+  const r = await call('PUT', '/api/supplies', {
+    vendor: { name: ' Shop ', phone: '1' },
+    cpap: { cushion: ['2026-11-01', '2026-10-01', 'bad', '2026-11-01'], bogus: ['2026-01-01'] },
+    glasses: { odSph: '-1.25', osAxis: '90', pd: '63', examDate: '2026-11-05', expires: 'nope', junk: 'x' },
+    stockings: [{ brand: 'Jobst', strength: '20-30' }, {}, { id: 'bad id', size: 'L' }],
+  }, token);
+  assert.deepEqual(r.body.cpap.cushion, ['2026-11-01', '2026-10-01']);
+  assert.deepEqual(r.body.cpap.filter, []);
+  assert.equal(r.body.cpap.bogus, undefined);
+  assert.equal(r.body.glasses.odSph, '-1.25');
+  assert.equal(r.body.glasses.expires, undefined);
+  assert.equal(r.body.glasses.junk, undefined);
+  assert.equal(r.body.stockings.length, 2);
+  assert.ok(r.body.stockings[0].id);
+  data = (await call('GET', '/api/data', undefined, token)).body;
+  assert.equal(data.supplies.vendor.name, 'Shop');
+});
+
+test('CPAP due dates follow the calendar or the interval', async () => {
+  const { nextDue } = await import('../public/js/fields.js');
+  assert.equal(nextDue({ days: [1] }, '2026-11-01'), '2026-12-01');
+  assert.equal(nextDue({ days: [1] }, '2026-11-28'), '2026-12-01');
+  assert.equal(nextDue({ days: [1, 15] }, '2026-11-01'), '2026-11-15');
+  assert.equal(nextDue({ days: [1, 15] }, '2026-11-15'), '2026-12-01');
+  assert.equal(nextDue({ days: [1, 15] }, '2026-12-20'), '2027-01-01');
+  assert.equal(nextDue({ months: 3 }, '2026-11-01'), '2027-02-01');
+  assert.equal(nextDue({ months: 3 }, '2026-11-30'), '2027-02-28');
+});
+
+test('reflections save with the day, are optional, and are cleaned', async () => {
+  const { call, token } = await setup();
+  let r = await call('PUT', '/api/entries/2026-11-11', { reflection: { expected: '  A quiet day ', actual: '', gap: 'Plans\nshift', junk: 'x' } }, token);
+  assert.deepEqual(r.body.entry.reflection, { expected: 'A quiet day', gap: 'Plans shift' }, 'a reflection alone is enough to save a day');
+  r = await call('PUT', '/api/entries/2026-11-12', { weight: 420, reflection: { expected: ' ', actual: '' } }, token);
+  assert.equal(r.body.entry.reflection, undefined, 'an empty reflection never blocks or clutters the day');
+  assert.equal(r.body.entry.weight, 420);
+  const ex = await call('GET', '/api/export', undefined, token);
+  assert.equal(ex.body.entries['2026-11-11'].reflection.expected, 'A quiet day');
+});
+
+test('a past reflection is resurfaced only when there are enough, preferring a month ago', async () => {
+  const { pickResurfaced } = await import('../public/js/fields.js');
+  const few = ['2026-10-01', '2026-10-02', '2026-10-03'];
+  assert.equal(pickResurfaced(few, '2026-11-11'), null);
+  const many = ['2026-09-01', '2026-09-02', '2026-10-09', '2026-10-12', '2026-10-20', '2026-11-01', '2026-11-10', '2026-11-11'];
+  assert.deepEqual(pickResurfaced(many, '2026-11-11'), { date: '2026-10-12', kind: 'month' });
+  const none = ['2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09', '2026-11-10'];
+  const a = pickResurfaced(none, '2026-11-11');
+  assert.equal(a.kind, 'random');
+  assert.ok(none.includes(a.date));
+  assert.deepEqual(pickResurfaced(none, '2026-11-11'), a, 'same pick all day');
+  assert.equal(pickResurfaced(none, '2026-11-04'), null, 'never shows a later day');
+});

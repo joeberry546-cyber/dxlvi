@@ -6,11 +6,11 @@ import { MEASURE_KEYS, measureLabel } from './fields.js';
 const GOAL_KEYS = ['neck', 'chest', 'waist', 'belly', 'hips'];
 
 function entriesToCSV() {
-  const cols = ['date', 'weight_lb', 'strength', 'strength_note', 'cardio_min', 'cardio_note', 'flex_min', 'flex_note', 'meditation_am_min', 'meditation_am_note', 'meditation_pm_min', 'meditation_pm_note', 'water_oz', 'steps', 'food', 'alcohol', 'alcohol_note', 'notes'];
+  const cols = ['date', 'weight_lb', 'strength', 'strength_note', 'cardio_min', 'cardio_note', 'flex_min', 'flex_note', 'meditation_am_min', 'meditation_am_note', 'meditation_pm_min', 'meditation_pm_note', 'water_oz', 'steps', 'food', 'alcohol', 'alcohol_note', 'notes', 'reflection_expected', 'reflection_actual', 'reflection_gap'];
   const q = (v) => { const t = v === undefined || v === null ? '' : String(v); return /[",\n\r]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
   const rows = Object.keys(state.entries).filter((d) => hasData(state.entries[d])).sort().map((d) => {
     const e = state.entries[d];
-    return [d, e.weight, e.strength ? 'yes' : '', e.strength?.note, e.cardio?.min, e.cardio?.note, e.flex?.min, e.flex?.note, e.meditationAm?.min, e.meditationAm?.note, e.meditationPm?.min, e.meditationPm?.note, e.water ? waterTotal(e) : '', e.steps, e.food, e.alcohol?.had ? 'yes' : '', e.alcohol?.note, e.notes].map(q).join(',');
+    return [d, e.weight, e.strength ? 'yes' : '', e.strength?.note, e.cardio?.min, e.cardio?.note, e.flex?.min, e.flex?.note, e.meditationAm?.min, e.meditationAm?.note, e.meditationPm?.min, e.meditationPm?.note, e.water ? waterTotal(e) : '', e.steps, e.food, e.alcohol?.had ? 'yes' : '', e.alcohol?.note, e.notes, e.reflection?.expected, e.reflection?.actual, e.reflection?.gap].map(q).join(',');
   });
   return [cols.join(','), ...rows].join('\n');
 }
@@ -119,7 +119,7 @@ export function viewSettings() {
       h('div', { class: 'row' }, h('label', { class: 'field grow', for: 'start-date' }, 'Date', sDate), h('label', { class: 'field grow', for: 'start-wt' }, 'Weight (lb)', sWt))),
     h('section', { class: 'card' }, h('h2', null, 'Look'), h('label', { class: 'field', for: 'theme' }, 'Theme', theme)),
     h('section', { class: 'card' }, h('h2', null, 'Bring in old history'), h('p', { class: 'sub' }, 'Choose the CSV files from your Seed data folder: weights, extras, steps and measurements. Importing only fills gaps, so it is safe to run again.'), fileIn, importBtn, result),
-    h('section', { class: 'card' }, h('h2', null, 'Your data'), h('p', { class: 'sub' }, 'Keep a copy of everything. The JSON file is a full backup, including measurements and medications. The CSV files open in a spreadsheet.'),
+    h('section', { class: 'card' }, h('h2', null, 'Your data'), h('p', { class: 'sub' }, 'Keep a copy of everything. The JSON file is a full backup, including measurements, medications and reflections. The CSV files open in a spreadsheet.'),
       h('div', { class: 'row' },
         h('button', { class: 'btn ghost', type: 'button', onclick: async () => { try { const r = await fetch('/api/export', { headers: { authorization: `Bearer ${state.token}` } }); download(`dxlvi-export-${todayStr()}.json`, await r.text(), 'application/json'); } catch (e) { toast(e.message); } } }, 'Download backup (JSON)'),
         h('button', { class: 'btn ghost', type: 'button', onclick: () => download(`dxlvi-days-${todayStr()}.csv`, entriesToCSV(), 'text/csv') }, 'Download days (CSV)'),

@@ -306,3 +306,21 @@ button.medrow.past { opacity: 0.8; }
 .eyetitle { font-family: var(--sans); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 8px 0 0; }
 .pair-item { display: grid; gap: 6px; padding-block: 12px; border-top: 1px solid var(--line); }
 .pair-item:first-of-type { border-top: 0; }
+
+/* reflection: a collapsed section on the daily log */
+details.reflect { display: block; }
+details.reflect > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: -16px; padding: 16px; border-radius: var(--r); }
+details.reflect > summary::-webkit-details-marker { display: none; }
+details.reflect > summary .meta { color: var(--muted); font-size: 0.85rem; display: inline-flex; align-items: center; gap: 8px; }
+details.reflect > summary .meta::after { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform 0.15s; }
+details.reflect[open] > summary .meta::after { transform: rotate(-135deg) translateY(-2px); }
+details.reflect[open] > summary { margin-bottom: 0; padding-bottom: 12px; }
+.reflect-body { display: grid; gap: 12px; }
+.resurfaced { background: var(--surface-2); border-radius: var(--r-sm); padding: 12px 14px; display: grid; gap: 8px; }
+.resurfaced .when { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.resurfaced dl { margin: 0; display: grid; gap: 2px; }
+.resurfaced dd + dt { margin-top: 8px; }
+.resurfaced dt { font-size: 0.78rem; color: var(--muted); }
+.resurfaced dd { margin: 0; font-family: var(--serif); font-size: 1rem; line-height: 1.35; overflow-wrap: anywhere; }
+.resurfaced a { font-size: 0.85rem; color: var(--muted); justify-self: start; }
+@media (prefers-reduced-motion: reduce) { details.reflect > summary .meta::after { transition: none; } }

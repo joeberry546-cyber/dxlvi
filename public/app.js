@@ -1,11 +1,12 @@
 import { h, todayStr, addDays, longDate, mediumDate, monthName, yearsMonthsSince, ageOn, fmt1, round1, bmi, feetInches, isDateStr, parseDate, utcDay } from './js/util.js';
-import { LS, state, app, api, loadData, setSignOutHandler, signOut, flush, markDirty, entryFor, hasData, hasText, waterTotal, numOrNull, weightSeries, shell, toast } from './js/core.js';
+import { LS, state, app, api, loadData, setSignOutHandler, signOut, flush, markDirty, entryFor, hasData, hasText, hasReflection, waterTotal, numOrNull, weightSeries, shell, toast } from './js/core.js';
 import { STREAKS, streak, calendarCard } from './js/insights.js';
 import { dueBanner, viewMeasure } from './js/measure.js';
 import { viewMeds } from './js/meds.js';
 import { viewSupplies } from './js/supplies.js';
 import { viewTrends, stopObserving } from './js/trends.js';
 import { viewSettings } from './js/settings.js';
+import { reflectionCard } from './js/reflect.js';
 
 /* ---------- login ---------- */
 function renderLogin(message = '') {
@@ -145,7 +146,7 @@ function viewLog(date) {
   const extraCard = h('section', { class: 'card' }, h('h2', null, 'Steps and notes'), h('label', { class: 'field', for: 'steps' }, 'Steps for the day', steps), h('label', { class: 'field', for: 'notes' }, 'Notes', notes));
 
   const strip = h('div', { class: 'streakstrip', 'aria-label': 'Current streaks' }, STREAKS.map((st) => { const r = streak(st.test); return r.current ? h('span', { class: 'chip streak' }, `${st.label} ${r.current}`) : null; }));
-  shell('log', head, dueBanner(), strip.childElementCount ? strip : null, tilesBox, weightCard, waterCard, movementCard, medCard, foodCard, extraCard);
+  shell('log', head, dueBanner(), strip.childElementCount ? strip : null, tilesBox, weightCard, waterCard, movementCard, medCard, reflectionCard(date), foodCard, extraCard);
   paintTiles(); paintInfo(); paintWater();
 }
 
@@ -198,14 +199,15 @@ function chipsFor(e) {
   if (e.water) c.push(h('span', { class: 'chip' }, `${fmt1(waterTotal(e))} oz water`));
   if (e.steps) c.push(h('span', { class: 'chip' }, `${e.steps.toLocaleString()} steps`));
   if (e.alcohol?.had) c.push(h('span', { class: 'chip alc' }, 'Alcohol'));
+  if (hasReflection(e)) c.push(h('span', { class: 'chip' }, 'Reflected'));
   return c;
 }
-const searchText = (e) => [e.food, e.notes, e.weightNote, e.strength?.note, e.cardio?.note, e.flex?.note, e.meditationAm?.note, e.meditationPm?.note, e.alcohol?.note].filter(Boolean).join(' ').toLowerCase();
+const searchText = (e) => [e.food, e.notes, e.weightNote, e.strength?.note, e.cardio?.note, e.flex?.note, e.meditationAm?.note, e.meditationPm?.note, e.alcohol?.note, e.reflection?.expected, e.reflection?.actual, e.reflection?.gap].filter(Boolean).join(' ').toLowerCase();
 
 function viewHistory() {
   const days = Object.keys(state.entries).filter((d) => hasData(state.entries[d])).sort().reverse();
   const list = h('div', { class: 'grid', style: 'display:grid;gap:14px' });
-  const search = h('input', { type: 'text', id: 'q', placeholder: 'Search food, notes, and workouts', 'aria-label': 'Search', oninput: () => paint() });
+  const search = h('input', { type: 'text', id: 'q', placeholder: 'Search food, notes, workouts, and reflections', 'aria-label': 'Search', oninput: () => paint() });
   const dayRow = (d) => {
     const e = state.entries[d];
     const dt = parseDate(d);

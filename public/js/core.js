@@ -1,6 +1,6 @@
 // Shared plumbing: state, talking to the server, autosave, and the page frame.
 import { h, s, todayStr, utcDay } from './util.js';
-import { dueCount } from './fields.js';
+import { dueCount, REFLECT_PROMPTS } from './fields.js';
 
 export const LS = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
@@ -127,6 +127,9 @@ export async function saveSupplies(next) {
 export const entryFor = (date) => (state.entries[date] ||= {});
 export const hasText = (v) => typeof v === 'string' && v.trim() !== '';
 export const hasData = (e) => e && Object.keys(e).some((k) => k !== 'updatedAt');
+export const hasReflection = (e) => Boolean(e?.reflection && REFLECT_PROMPTS.some(([k]) => hasText(e.reflection[k])));
+// A day counts as "logged" for streaks only if it has something besides a reflection.
+export const hasLogData = (e) => Boolean(e) && Object.keys(e).some((k) => k !== 'updatedAt' && k !== 'reflection');
 export const waterTotal = (e) => (e.water || []).reduce((a, b) => a + b, 0);
 export const numOrNull = (v) => (v === '' || v === null ? null : Number(v));
 
@@ -147,6 +150,10 @@ export function tidy(date) {
   if (e.steps === null || e.steps === undefined || Number.isNaN(e.steps)) delete e.steps;
   for (const k of ['food', 'notes']) if (!hasText(e[k])) delete e[k];
   if (e.alcohol && !e.alcohol.had && !hasText(e.alcohol.note)) delete e.alcohol;
+  if (e.reflection) {
+    for (const k of Object.keys(e.reflection)) if (!hasText(e.reflection[k])) delete e.reflection[k];
+    if (!Object.keys(e.reflection).length) delete e.reflection;
+  }
   if (!Object.keys(e).some((k) => k !== 'updatedAt')) delete state.entries[date];
 }
 

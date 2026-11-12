@@ -74,3 +74,27 @@ export function dueInfo(part, history, today) {
 export function dueCount(cpap, today) {
   return CPAP_PARTS.filter((p) => { const i = dueInfo(p, cpap && cpap[p.key], today); return i.diff !== null && i.diff <= 0; }).length;
 }
+
+// ---------- Reflection: the short evening review on the daily log ----------
+export const REFLECT_PROMPTS = [
+  ['expected', 'What I expected today', 'A sentence is plenty'],
+  ['actual', 'What actually happened', 'What the day really was'],
+  ['gap', 'What the gap tells me', 'One thing worth keeping'],
+];
+export const REFLECT_MIN = 7; // a past reflection is only resurfaced once this many exist
+
+// dates = every date that has a reflection. Returns the one to show again on forDate, or null.
+// Prefers one from about a month before (27 to 34 days, closest to 30). Otherwise picks one
+// from earlier days, and the pick stays the same all day because it is derived from the date.
+export function pickResurfaced(dates, forDate) {
+  if (dates.length < REFLECT_MIN) return null;
+  const t = dayNum(forDate);
+  const earlier = dates.filter((d) => dayNum(d) < t).sort();
+  if (!earlier.length) return null;
+  const near = earlier.map((d) => ({ d, ago: t - dayNum(d) })).filter((x) => x.ago >= 27 && x.ago <= 34)
+    .sort((a, b) => Math.abs(a.ago - 30) - Math.abs(b.ago - 30) || a.ago - b.ago);
+  if (near.length) return { date: near[0].d, kind: 'month' };
+  let hash = 0;
+  for (const c of forDate) hash = (hash * 31 + c.charCodeAt(0)) >>> 0;
+  return { date: earlier[hash % earlier.length], kind: 'random' };
+}

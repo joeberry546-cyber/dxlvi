@@ -2,7 +2,7 @@
 
 A private tracker for weight, daily habits, body measurements, and medications. DXLVI is 546 in Roman numerals, the weight of the first weigh-in on Aug 13, 2012.
 
-DXLVI now covers all three phases: a sign-in gate; a daily log (weight, water with 8/16/24/40 oz buttons, strength, cardio, flexibility and balance, meditation with a timer, food, alcohol, steps, notes) with editing and backfill; a Measure page (17 monthly measurements, inch/cm toggle, reminder banner, comparisons, belly-to-height ratio); a Meds page (add, change, stop, remove); a Supplies page (CPAP replacement schedule with a "Changed today" button and due badges, glasses prescription, compression stockings); history as a calendar or list; Trends (highlights, streaks, weight chart, BMI, measurement lines); optional goals; history import; and export.
+DXLVI now covers all three phases: a sign-in gate; a daily log (weight, water with 8/16/24/40 oz buttons, strength, cardio, flexibility and balance, meditation with a timer, an optional three-line evening reflection, food, alcohol, steps, notes) with editing and backfill; a Measure page (17 monthly measurements, inch/cm toggle, reminder banner, comparisons, belly-to-height ratio); a Meds page (add, change, stop, remove); a Supplies page (CPAP replacement schedule with a "Changed today" button and due badges, glasses prescription, compression stockings); history as a calendar or list; Trends (highlights, streaks, weight chart, BMI, measurement lines); optional goals; history import; and export.
 
 
 ## How it fits together

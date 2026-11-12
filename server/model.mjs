@@ -1,5 +1,5 @@
 // Data rules for DXLVI: what an entry looks like, how it is cleaned, and how imports merge.
-import { MEASURE_KEYS, MED_CATEGORIES, MED_FREQUENCIES, CPAP_PARTS, EYE_COLS, EYES, eyeKey, GLASSES_EXTRA } from '../public/js/fields.js';
+import { MEASURE_KEYS, MED_CATEGORIES, MED_FREQUENCIES, CPAP_PARTS, EYE_COLS, EYES, eyeKey, GLASSES_EXTRA, REFLECT_PROMPTS } from '../public/js/fields.js';
 
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -98,6 +98,16 @@ export function sanitizeEntry(input) {
 
   const notes = str(raw.notes, 4000);
   if (notes) e.notes = notes;
+
+  // The evening reflection: three short lines, each optional.
+  if (raw.reflection && typeof raw.reflection === 'object') {
+    const r = {};
+    for (const [k] of REFLECT_PROMPTS) {
+      const v = str(raw.reflection[k], 300).replace(/\s*\n\s*/g, ' ');
+      if (v) r[k] = v;
+    }
+    if (Object.keys(r).length) e.reflection = r;
+  }
 
   return e;
 }

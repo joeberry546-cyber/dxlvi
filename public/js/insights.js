@@ -1,6 +1,6 @@
 // Streaks, highlights and the activity calendar. No red or green meanings anywhere.
 import { h, todayStr, addDays, utcDay, fmtDate, mediumDate, monthName, fmt1 } from './util.js';
-import { state, hasData, waterTotal, weightSeries } from './core.js';
+import { state, hasLogData, waterTotal, weightSeries } from './core.js';
 import { BELLY_KEY } from './fields.js';
 
 const moved = (e) => Boolean(e && (e.strength?.done || e.cardio?.min || e.flex?.min || e.cardio || e.flex));
@@ -12,7 +12,7 @@ const watered = (e) => {
 };
 
 export const STREAKS = [
-  { key: 'log', label: 'Logging', unit: 'days', test: (e) => hasData(e) },
+  { key: 'log', label: 'Logging', unit: 'days', test: (e) => hasLogData(e) },
   { key: 'move', label: 'Moving', unit: 'days', test: moved },
   { key: 'med', label: 'Meditating', unit: 'days', test: meditated },
   { key: 'water', label: 'Water', unit: 'days', test: watered },
