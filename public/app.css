@@ -99,17 +99,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .status { font-size: 0.82rem; color: var(--muted); min-height: 1.2em; }
 .status.error { color: var(--accent); font-weight: 700; }
 
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; box-shadow: var(--shadow); min-width: 0; display: grid; gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; box-shadow: var(--shadow); min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .card > h2 + .sub { margin-top: -6px; }
 .sub { color: var(--muted); font-size: 0.9rem; margin: 0; }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .grow { flex: 1 1 160px; min-width: 0; }
 
-label.field { display: grid; gap: 4px; font-size: 0.88rem; color: var(--muted); font-weight: 600; }
+label.field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; font-size: 0.88rem; color: var(--muted); font-weight: 600; }
 input[type="text"], input[type="number"], input[type="date"], input[type="password"], select, textarea {
   width: 100%; padding: 11px 14px; border-radius: var(--r-sm); border: 1.5px solid var(--line);
   background: var(--bg); color: var(--ink); min-height: 46px;
 }
+/* Phones (iOS especially) give date and file pickers a built-in width that ignores the box they sit in. */
+input[type="date"] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; }
+input[type="date"]::-webkit-date-and-time-value { text-align: left; min-height: 1.5em; }
+input[type="file"] { width: 100%; min-width: 0; max-width: 100%; font-size: 0.9rem; }
 textarea { min-height: 88px; resize: vertical; }
 input::placeholder, textarea::placeholder { color: var(--muted); opacity: 0.75; }
 input[type="number"] { font-variant-numeric: tabular-nums; }
@@ -307,14 +311,16 @@ button.medrow.past { opacity: 0.8; }
 .pair-item { display: grid; gap: 6px; padding-block: 12px; border-top: 1px solid var(--line); }
 .pair-item:first-of-type { border-top: 0; }
 
-/* reflection: a collapsed section on the daily log */
-details.reflect { display: block; }
-details.reflect > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: -16px; padding: 16px; border-radius: var(--r); }
-details.reflect > summary::-webkit-details-marker { display: none; }
-details.reflect > summary .meta { color: var(--muted); font-size: 0.85rem; display: inline-flex; align-items: center; gap: 8px; }
-details.reflect > summary .meta::after { content: ""; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform 0.15s; }
-details.reflect[open] > summary .meta::after { transform: rotate(-135deg) translateY(-2px); }
-details.reflect[open] > summary { margin-bottom: 0; padding-bottom: 12px; }
+/* folding sections on the daily log (Reflection uses the same look) */
+details:is(.fold, .reflect) { display: block; }
+details:is(.fold, .reflect) > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: -16px; padding: 16px; border-radius: var(--r); }
+details:is(.fold, .reflect) > summary::-webkit-details-marker { display: none; }
+details:is(.fold, .reflect) > summary h2 { flex: 0 0 auto; }
+details:is(.fold, .reflect) > summary .meta { color: var(--muted); font-size: 0.85rem; display: inline-flex; align-items: center; gap: 8px; min-width: 0; text-align: right; }
+details:is(.fold, .reflect) > summary .meta::after { content: ""; flex: 0 0 auto; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg) translateY(-2px); transition: transform 0.15s; }
+details:is(.fold, .reflect)[open] > summary .meta::after { transform: rotate(-135deg) translateY(-2px); }
+details:is(.fold, .reflect)[open] > summary { margin-bottom: 0; padding-bottom: 12px; }
+.fold-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
 .reflect-body { display: grid; gap: 12px; }
 .resurfaced { background: var(--surface-2); border-radius: var(--r-sm); padding: 12px 14px; display: grid; gap: 8px; }
 .resurfaced .when { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
@@ -323,4 +329,4 @@ details.reflect[open] > summary { margin-bottom: 0; padding-bottom: 12px; }
 .resurfaced dt { font-size: 0.78rem; color: var(--muted); }
 .resurfaced dd { margin: 0; font-family: var(--serif); font-size: 1rem; line-height: 1.35; overflow-wrap: anywhere; }
 .resurfaced a { font-size: 0.85rem; color: var(--muted); justify-self: start; }
-@media (prefers-reduced-motion: reduce) { details.reflect > summary .meta::after { transition: none; } }
+@media (prefers-reduced-motion: reduce) { details:is(.fold, .reflect) > summary .meta::after { transition: none; } }

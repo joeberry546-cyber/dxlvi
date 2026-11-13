@@ -34,10 +34,25 @@ function latestWeightOnOrBefore(date) {
   return list.length ? list[list.length - 1] : null;
 }
 
+// Which collapsible sections are open for the day on screen. Everything starts closed again on a new day.
+const folds = { date: null, open: new Set() };
+
+// A card that folds down to its title and a one-line summary, like Reflection.
+function foldCard(key, title, ...body) {
+  const meta = h('span', { class: 'meta' });
+  const box = h('details', { class: 'card fold', open: folds.open.has(key) ? true : null },
+    h('summary', null, h('h2', null, title), meta),
+    h('div', { class: 'fold-body' }, body));
+  box.addEventListener('toggle', () => { if (box.open) folds.open.add(key); else folds.open.delete(key); });
+  return { box, meta };
+}
+
 function viewLog(date) {
   if (!isDateStr(date)) date = todayStr();
+  if (folds.date !== date) { folds.date = date; folds.open = new Set(); }
+  if (LS.get('dxlvi.timer')) folds.open.add('meditation'); // keep a running timer in view
   const E = () => entryFor(date);
-  const touch = () => markDirty(date);
+  const touch = () => { markDirty(date); paintSummaries(); };
   const tilesBox = h('div', { class: 'tiles' });
   const stg = state.settings;
 
@@ -123,31 +138,44 @@ function viewLog(date) {
     min.addEventListener('input', sync); note.addEventListener('input', sync);
     return h('div', { class: 'row' }, min, note);
   };
-  const movementCard = h('section', { class: 'card' }, h('h2', null, 'Movement'),
+  const steps = h('input', { id: 'steps', type: 'number', inputmode: 'numeric', min: '0', max: '200000', step: '1', placeholder: 'Steps for the day', 'aria-label': 'Steps for the day', value: E().steps ?? '', oninput: (ev) => { E().steps = numOrNull(ev.target.value); touch(); } });
+  const movement = foldCard('movement', 'Movement',
     h('div', { class: 'act' }, h('h3', null, 'Strength'), h('label', { class: 'check', for: 'strength-done' }, strengthBox, 'Did strength training'), strengthNote),
     h('div', { class: 'act' }, h('h3', null, 'Cardio'), minuteRow('cardio', 'cardio', 'Walk, elliptical, bike…')),
-    h('div', { class: 'act' }, h('h3', null, 'Flexibility and balance'), minuteRow('flex', 'flex', 'Stretching, mobility, single-leg work…')));
+    h('div', { class: 'act' }, h('h3', null, 'Flexibility and balance'), minuteRow('flex', 'flex', 'Stretching, mobility, single-leg work…')),
+    h('div', { class: 'act' }, h('h3', null, 'Steps'), steps));
 
   const timer = meditationTimer(date, (min, key) => { const cur = E()[key] || {}; E()[key] = { ...cur, min: Math.round(((cur.min || 0) + min) * 10) / 10 }; touch(); viewLog(date); });
-  const medCard = h('section', { class: 'card' }, h('h2', null, 'Meditation'), timer,
+  const meditation = foldCard('meditation', 'Meditation', timer,
     h('div', { class: 'act' }, h('h3', null, 'Morning'), minuteRow('meditationAm', 'medam', 'Breathwork, silent sitting, guided…')),
     h('div', { class: 'act' }, h('h3', null, 'Evening'), minuteRow('meditationPm', 'medpm', 'Breathwork, silent sitting, guided…')));
 
-  /* food, drink, steps, notes */
+  /* food and drink, notes */
   const food = h('textarea', { id: 'food', maxlength: '4000', placeholder: 'What did you eat today? No numbers needed.', oninput: (ev) => { E().food = ev.target.value; touch(); } }, E().food ?? '');
   const alcBox = h('input', { type: 'checkbox', id: 'alc', checked: Boolean(E().alcohol?.had) });
   const alcNote = h('input', { type: 'text', id: 'alc-note', maxlength: '300', placeholder: 'What and how much (optional)', value: E().alcohol?.note ?? '' });
   const syncAlc = () => { E().alcohol = { had: alcBox.checked, note: alcNote.value }; touch(); };
   alcBox.addEventListener('change', syncAlc); alcNote.addEventListener('input', syncAlc);
-  const foodCard = h('section', { class: 'card' }, h('h2', null, 'Food and drink'), h('label', { class: 'field', for: 'food' }, 'What I ate', food),
+  const foodFold = foldCard('food', 'Food and drink', h('label', { class: 'field', for: 'food' }, 'What I ate', food),
     h('label', { class: 'check', for: 'alc' }, alcBox, 'Had alcohol'), alcNote);
-  const steps = h('input', { id: 'steps', type: 'number', inputmode: 'numeric', min: '0', max: '200000', step: '1', placeholder: 'Steps', value: E().steps ?? '', oninput: (ev) => { E().steps = numOrNull(ev.target.value); touch(); } });
-  const notes = h('textarea', { id: 'notes', maxlength: '4000', placeholder: 'Anything worth remembering about today', oninput: (ev) => { E().notes = ev.target.value; touch(); } }, E().notes ?? '');
-  const extraCard = h('section', { class: 'card' }, h('h2', null, 'Steps and notes'), h('label', { class: 'field', for: 'steps' }, 'Steps for the day', steps), h('label', { class: 'field', for: 'notes' }, 'Notes', notes));
+  const notes = h('textarea', { id: 'notes', maxlength: '4000', placeholder: 'Anything worth remembering about today', 'aria-label': 'Notes', oninput: (ev) => { E().notes = ev.target.value; touch(); } }, E().notes ?? '');
+  const notesFold = foldCard('notes', 'Notes', notes);
+
+  /* the one-line summary on each folded section */
+  function paintSummaries() {
+    const e = E();
+    const none = 'Not logged yet';
+    const mins = (x, label) => (x ? (x.min ? `${label} ${fmt1(x.min)}m` : label) : null);
+    foodFold.meta.textContent = [hasText(e.food) ? 'Food noted' : null, e.alcohol?.had ? 'Alcohol' : null].filter(Boolean).join(' · ') || none;
+    movement.meta.textContent = [e.strength ? 'Strength' : null, mins(e.cardio, 'Cardio'), mins(e.flex, 'Flex'), e.steps ? `${e.steps.toLocaleString()} steps` : null].filter(Boolean).join(' · ') || none;
+    const med = (e.meditationAm?.min || 0) + (e.meditationPm?.min || 0);
+    meditation.meta.textContent = med ? `${fmt1(med)} min` : e.meditationAm || e.meditationPm ? 'Noted' : none;
+    notesFold.meta.textContent = hasText(e.notes) ? 'Written' : 'Nothing yet';
+  }
 
   const strip = h('div', { class: 'streakstrip', 'aria-label': 'Current streaks' }, STREAKS.map((st) => { const r = streak(st.test); return r.current ? h('span', { class: 'chip streak' }, `${st.label} ${r.current}`) : null; }));
-  shell('log', head, dueBanner(), strip.childElementCount ? strip : null, tilesBox, weightCard, waterCard, movementCard, medCard, reflectionCard(date), foodCard, extraCard);
-  paintTiles(); paintInfo(); paintWater();
+  shell('log', head, dueBanner(), strip.childElementCount ? strip : null, tilesBox, weightCard, waterCard, foodFold.box, movement.box, meditation.box, reflectionCard(date), notesFold.box);
+  paintTiles(); paintInfo(); paintWater(); paintSummaries();
 }
 
 /* ---------- meditation timer ---------- */
